@@ -12,11 +12,12 @@ const login = async (req, res, next) => {
     // 1. Zod Validation
     const validationResult = loginSchema.safeParse(req.body);
     if (!validationResult.success) {
+      const issues = validationResult.error.issues || validationResult.error.errors || [];
       return res.status(400).json({
         error: 'ValidationError',
         message: 'Invalid login payload',
-        details: validationResult.error.errors.map((e) => ({
-          field: e.path.join('.'),
+        details: issues.map((e) => ({
+          field: Array.isArray(e.path) ? e.path.join('.') : String(e.path),
           message: e.message,
         })),
       });

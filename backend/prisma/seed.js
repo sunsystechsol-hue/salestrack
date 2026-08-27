@@ -58,7 +58,7 @@ async function main() {
     },
   });
 
-  // 3. Counsellor User
+  // 3. Counsellor 1 User
   const counsellor = await prisma.user.upsert({
     where: { email: counsellorEmail },
     update: {
@@ -66,9 +66,26 @@ async function main() {
       isActive: true,
     },
     create: {
-      name: 'Lead Counsellor',
+      name: 'Lead Counsellor One',
       email: counsellorEmail,
       phone: '9999999993',
+      passwordHash: counsellorPasswordHash,
+      role: 'COUNSELLOR',
+      isActive: true,
+    },
+  });
+
+  // 4. Counsellor 2 User (For reassignment tests)
+  const counsellor2 = await prisma.user.upsert({
+    where: { email: 'counsellor2@kaushalsaathi.com' },
+    update: {
+      passwordHash: counsellorPasswordHash,
+      isActive: true,
+    },
+    create: {
+      name: 'Lead Counsellor Two',
+      email: 'counsellor2@kaushalsaathi.com',
+      phone: '9999999994',
       passwordHash: counsellorPasswordHash,
       role: 'COUNSELLOR',
       isActive: true,
@@ -78,7 +95,8 @@ async function main() {
   console.log('✔ Seeded test users successfully:');
   console.log('  Admin:', admin.email);
   console.log('  Manager:', manager.email);
-  console.log('  Counsellor:', counsellor.email);
+  console.log('  Counsellor 1:', counsellor.email);
+  console.log('  Counsellor 2:', counsellor2.email);
 }
 
 main()

@@ -1,4 +1,4 @@
-// Prisma Schema for KaushalSaathi Task, Lead & Sales Performance Tracker - Phase 1
+// Prisma Schema for KaushalSaathi Task, Lead & Sales Performance Tracker - Phase 2
 
 generator client {
   provider = "prisma-client-js"
@@ -154,4 +154,17 @@ model Task {
   @@index([userId])
   @@index([status])
   @@index([dueAt])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String
+  entity    String
+  entityId  String
+  userId    String?
+  details   String?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([userId])
 }

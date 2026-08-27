@@ -2,7 +2,11 @@ const { PrismaClient } = require('@prisma/client');
 const { PrismaPg } = require('@prisma/adapter-pg');
 const { Pool } = require('pg');
 
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/kaushalsaathi_tracker?schema=public';
+if (!process.env.DATABASE_URL) {
+  throw new Error('Missing required DATABASE_URL environment variable');
+}
+
+const connectionString = process.env.DATABASE_URL;
 
 const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);

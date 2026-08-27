@@ -4,6 +4,9 @@ const cors = require('cors');
 const helmet = require('helmet');
 const healthRoutes = require('./routes/health.routes');
 const authRoutes = require('./routes/auth.routes');
+const leadRoutes = require('./routes/lead.routes');
+const integrationRoutes = require('./routes/integration.routes');
+const userRoutes = require('./routes/user.routes');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -22,6 +25,9 @@ app.use(express.json());
 // API Routes
 app.use('/api', healthRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/leads', leadRoutes);
+app.use('/api/integrations', integrationRoutes);
+app.use('/api/users', userRoutes);
 
 // 404 Handler
 app.use((req, res) => {
