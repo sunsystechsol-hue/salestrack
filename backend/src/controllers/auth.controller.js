@@ -5,7 +5,7 @@ const prisma = require('../utils/prisma');
 
 /**
  * POST /api/auth/login
- * Handles user login using email and password.
+ * Handles user login using email and password, and records server-side attendance.
  */
 const login = async (req, res, next) => {
   try {
@@ -30,7 +30,6 @@ const login = async (req, res, next) => {
       where: { email },
     });
 
-    // Uniform generic response for invalid credentials to avoid account enumeration
     if (!user) {
       return res.status(401).json({
         error: 'Unauthorized',
@@ -55,14 +54,39 @@ const login = async (req, res, next) => {
       });
     }
 
-    // 5. Generate JWT token
+    // 5. Record Server-Side Attendance (Asia/Kolkata timezone safe)
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+    const workDate = new Date(`${todayStr}T00:00:00.000Z`);
+
+    try {
+      await prisma.attendance.upsert({
+        where: {
+          userId_workDate: {
+            userId: user.id,
+            workDate,
+          },
+        },
+        update: {
+          updatedAt: new Date(),
+        },
+        create: {
+          userId: user.id,
+          workDate,
+          loginAt: new Date(),
+        },
+      });
+    } catch (attErr) {
+      console.error('[Attendance] Login attendance upsert warning:', attErr.message);
+    }
+
+    // 6. Generate JWT token
     const token = signToken({
       id: user.id,
       email: user.email,
       role: user.role,
     });
 
-    // 6. Return response without passwordHash or internal secrets
+    // 7. Return response without passwordHash or internal secrets
     return res.status(200).json({
       token,
       user: {

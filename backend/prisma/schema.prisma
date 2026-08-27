@@ -1,4 +1,4 @@
-// Prisma Schema for KaushalSaathi Task, Lead & Sales Performance Tracker - Phase 2
+// Prisma Schema for KaushalSaathi Task, Lead & Sales Performance Tracker - Phase 3
 
 generator client {
   provider = "prisma-client-js"
@@ -87,6 +87,7 @@ model Attendance {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, workDate])
   @@index([userId, workDate])
 }
 
@@ -125,6 +126,8 @@ model CallLog {
   outcome      CallOutcome
   remarks      String?
   nextFollowUp DateTime?
+  isCompleted  Boolean     @default(false)
+  completedAt  DateTime?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
@@ -134,6 +137,7 @@ model CallLog {
   @@index([leadId])
   @@index([userId])
   @@index([calledAt])
+  @@index([nextFollowUp])
 }
 
 model Task {

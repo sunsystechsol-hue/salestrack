@@ -41,6 +41,32 @@ export default function Sidebar({ user, currentPage, onNavigate }) {
           <span className="sidebar-link-icon">📋</span>
           <span>Lead Management</span>
         </div>
+
+        <span className="nav-group-label" style={{ marginTop: '0.75rem' }}>Phase 3 Activity</span>
+
+        <div
+          className={`sidebar-link ${currentPage === 'attendance' ? 'active' : ''}`}
+          onClick={() => onNavigate('attendance')}
+        >
+          <span className="sidebar-link-icon">🕒</span>
+          <span>Attendance</span>
+        </div>
+
+        <div
+          className={`sidebar-link ${currentPage === 'calls' ? 'active' : ''}`}
+          onClick={() => onNavigate('calls')}
+        >
+          <span className="sidebar-link-icon">📞</span>
+          <span>Call Logs</span>
+        </div>
+
+        <div
+          className={`sidebar-link ${currentPage === 'followups' ? 'active' : ''}`}
+          onClick={() => onNavigate('followups')}
+        >
+          <span className="sidebar-link-icon">📅</span>
+          <span>Follow-up Management</span>
+        </div>
       </nav>
 
       {/* User Profile Footer */}

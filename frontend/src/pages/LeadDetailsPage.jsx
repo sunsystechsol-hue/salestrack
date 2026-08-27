@@ -1,30 +1,46 @@
 import React, { useState, useEffect } from 'react';
-import { leadService } from '../services/api';
+import { leadService, callService } from '../services/api';
 import StatusBadge from '../components/StatusBadge';
 import FormField from '../components/FormField';
+import Modal from '../components/Modal';
 import { LoadingState } from '../components/LoadingState';
 
 export default function LeadDetailsPage({ leadId, onNavigate }) {
   const [lead, setLead] = useState(null);
+  const [calls, setCalls] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Editing state
+  // Lead editing state
   const [status, setStatus] = useState('');
   const [notes, setNotes] = useState('');
   const [nextFollowUp, setNextFollowUp] = useState('');
   const [updating, setUpdating] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
 
+  // Log Call Modal state
+  const [showLogCallModal, setShowLogCallModal] = useState(false);
+  const [callSubmitting, setCallSubmitting] = useState(false);
+  const [callForm, setCallForm] = useState({
+    durationSec: 60,
+    outcome: 'INTERESTED',
+    remarks: '',
+    nextFollowUp: '',
+  });
+
   const fetchLeadDetails = async () => {
     setLoading(true);
     setError('');
     try {
-      const data = await leadService.getLeadById(leadId);
-      setLead(data);
-      setStatus(data.status || 'NEW');
-      setNotes(data.notes || '');
-      setNextFollowUp(data.nextFollowUp ? new Date(data.nextFollowUp).toISOString().slice(0, 16) : '');
+      const [leadData, callData] = await Promise.all([
+        leadService.getLeadById(leadId),
+        callService.getCalls({ leadId, limit: 50 }),
+      ]);
+      setLead(leadData);
+      setCalls(callData.data || []);
+      setStatus(leadData.status || 'NEW');
+      setNotes(leadData.notes || '');
+      setNextFollowUp(leadData.nextFollowUp ? new Date(leadData.nextFollowUp).toISOString().slice(0, 16) : '');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -73,8 +89,31 @@ export default function LeadDetailsPage({ leadId, onNavigate }) {
     }
   };
 
+  const handleLogCallSubmit = async (e) => {
+    e.preventDefault();
+    setCallSubmitting(true);
+    try {
+      const payload = {
+        leadId,
+        durationSec: parseInt(callForm.durationSec, 10) || 0,
+        outcome: callForm.outcome,
+        remarks: callForm.remarks,
+        nextFollowUp: callForm.nextFollowUp ? new Date(callForm.nextFollowUp).toISOString() : null,
+      };
+
+      await callService.createCall(payload);
+      setShowLogCallModal(false);
+      setCallForm({ durationSec: 60, outcome: 'INTERESTED', remarks: '', nextFollowUp: '' });
+      fetchLeadDetails();
+    } catch (err) {
+      alert(`Failed to log call: ${err.message}`);
+    } finally {
+      setCallSubmitting(false);
+    }
+  };
+
   if (loading) {
-    return <LoadingState message="Loading lead record details..." />;
+    return <LoadingState message="Loading lead record & call history..." />;
   }
 
   if (error || !lead) {
@@ -99,7 +138,10 @@ export default function LeadDetailsPage({ leadId, onNavigate }) {
         </button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>Current Status:</span>
+          <button className="btn btn-primary btn-sm" onClick={() => setShowLogCallModal(true)}>
+            📞 Log Call Interaction
+          </button>
+          <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>Status:</span>
           <StatusBadge status={lead.status} />
         </div>
       </div>
@@ -162,6 +204,59 @@ export default function LeadDetailsPage({ leadId, onNavigate }) {
             </div>
           </div>
 
+          {/* Call History Card */}
+          <div className="crm-card">
+            <div className="crm-card-header">
+              <h3 className="crm-card-title">Call Log History ({calls.length})</h3>
+              <button className="btn btn-secondary btn-sm" onClick={() => setShowLogCallModal(true)}>
+                + New Log
+              </button>
+            </div>
+
+            {calls.length === 0 ? (
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', textAlign: 'center', padding: '1.5rem 0' }}>
+                No calls logged for this lead yet.
+              </p>
+            ) : (
+              <div className="crm-table-container" style={{ border: 'none', boxShadow: 'none' }}>
+                <table className="crm-table">
+                  <thead>
+                    <tr>
+                      <th>Date & Time (IST)</th>
+                      <th>Duration</th>
+                      <th>Outcome</th>
+                      <th>Remarks</th>
+                      <th>Next Follow-up</th>
+                      <th>Counsellor</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {calls.map((c) => (
+                      <tr key={c.id}>
+                        <td style={{ fontFamily: 'monospace', fontSize: '0.825rem' }}>
+                          {new Date(c.calledAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
+                        </td>
+                        <td>{c.durationSec}s</td>
+                        <td>
+                          <span className="badge-status" style={{ backgroundColor: '#f1f5f9', color: '#334155' }}>
+                            {c.outcome.replace(/_/g, ' ')}
+                          </span>
+                        </td>
+                        <td style={{ maxWidth: '200px', whiteSpace: 'normal', fontSize: '0.8rem' }}>
+                          {c.remarks || '—'}
+                        </td>
+                        <td style={{ fontFamily: 'monospace', fontSize: '0.825rem' }}>
+                          {c.nextFollowUp ? new Date(c.nextFollowUp).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '—'}
+                        </td>
+                        <td>{c.user?.name || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
           {/* Follow-up & Notes Card */}
           <div className="crm-card">
             <div className="crm-card-header">
@@ -220,6 +315,26 @@ export default function LeadDetailsPage({ leadId, onNavigate }) {
             </FormField>
           </div>
 
+          {/* Scheduled Follow-up Summary Card */}
+          <div className="crm-card">
+            <div className="crm-card-header">
+              <h3 className="crm-card-title">Scheduled Follow-up</h3>
+            </div>
+
+            {lead.nextFollowUp ? (
+              <div>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Scheduled Date & Time:</p>
+                <p style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)', marginTop: '0.2rem', fontFamily: 'monospace' }}>
+                  {new Date(lead.nextFollowUp).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
+                </p>
+              </div>
+            ) : (
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
+                No follow-up date currently scheduled for this lead.
+              </p>
+            )}
+          </div>
+
           {/* Assignment Info Card */}
           <div className="crm-card">
             <div className="crm-card-header">
@@ -248,6 +363,73 @@ export default function LeadDetailsPage({ leadId, onNavigate }) {
           </div>
         </div>
       </div>
+
+      {/* Log Call Modal */}
+      <Modal
+        isOpen={showLogCallModal}
+        onClose={() => setShowLogCallModal(false)}
+        title={`Log Call Interaction for ${lead.name}`}
+      >
+        <form onSubmit={handleLogCallSubmit}>
+          <FormField label="Call Outcome" required>
+            <select
+              className="form-select"
+              value={callForm.outcome}
+              onChange={(e) => setCallForm({ ...callForm, outcome: e.target.value })}
+              required
+            >
+              <option value="INTERESTED">INTERESTED</option>
+              <option value="NOT_INTERESTED">NOT INTERESTED</option>
+              <option value="FOLLOW_UP_REQUIRED">FOLLOW UP REQUIRED</option>
+              <option value="INQUIRY">INQUIRY</option>
+              <option value="CALL_BACK">CALL BACK</option>
+              <option value="NO_RESPONSE">NO RESPONSE</option>
+              <option value="WRONG_NUMBER">WRONG NUMBER</option>
+              <option value="CONVERTED">CONVERTED</option>
+              <option value="OTHER">OTHER</option>
+            </select>
+          </FormField>
+
+          <FormField label="Call Duration (seconds)" required>
+            <input
+              type="number"
+              min="0"
+              className="form-input"
+              value={callForm.durationSec}
+              onChange={(e) => setCallForm({ ...callForm, durationSec: e.target.value })}
+              required
+            />
+          </FormField>
+
+          <FormField label="Next Scheduled Follow-up (optional)">
+            <input
+              type="datetime-local"
+              className="form-input"
+              value={callForm.nextFollowUp}
+              onChange={(e) => setCallForm({ ...callForm, nextFollowUp: e.target.value })}
+            />
+          </FormField>
+
+          <FormField label="Remarks & Interaction Details">
+            <textarea
+              className="form-textarea"
+              rows="3"
+              value={callForm.remarks}
+              onChange={(e) => setCallForm({ ...callForm, remarks: e.target.value })}
+              placeholder="Enter key conversation points, requirements, or follow-up reason..."
+            ></textarea>
+          </FormField>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.25rem' }}>
+            <button type="button" className="btn btn-secondary" onClick={() => setShowLogCallModal(false)}>
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={callSubmitting}>
+              {callSubmitting ? 'Logging...' : 'Save Call Log'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

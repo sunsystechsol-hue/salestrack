@@ -3,8 +3,12 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import LeadsPage from './pages/LeadsPage';
 import LeadDetailsPage from './pages/LeadDetailsPage';
+import AttendancePage from './pages/AttendancePage';
+import CallsPage from './pages/CallsPage';
+import FollowUpsPage from './pages/FollowUpsPage';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
+import { attendanceService } from './services/api';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -37,11 +41,17 @@ export default function App() {
     setCurrentPage('dashboard');
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('user_info');
-    setUser(null);
-    setCurrentPage('login');
+  const handleLogout = async () => {
+    try {
+      await attendanceService.logout();
+    } catch (err) {
+      console.warn('Logout attendance recording error:', err.message);
+    } finally {
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('user_info');
+      setUser(null);
+      setCurrentPage('login');
+    }
   };
 
   const handleNavigate = (page, params = {}) => {
@@ -61,9 +71,15 @@ export default function App() {
       case 'dashboard':
         return 'Executive Overview';
       case 'leads':
-        return 'Lead Management';
+        return 'Lead Directory';
       case 'lead_details':
         return 'Lead Record Details';
+      case 'attendance':
+        return 'Employee Attendance & Session Log';
+      case 'calls':
+        return 'Call Activity Logs';
+      case 'followups':
+        return 'Follow-up Management';
       default:
         return 'Dashboard';
     }
@@ -85,6 +101,18 @@ export default function App() {
 
           {currentPage === 'lead_details' && selectedLeadId && (
             <LeadDetailsPage leadId={selectedLeadId} onNavigate={handleNavigate} />
+          )}
+
+          {currentPage === 'attendance' && (
+            <AttendancePage user={user} />
+          )}
+
+          {currentPage === 'calls' && (
+            <CallsPage user={user} onNavigate={handleNavigate} />
+          )}
+
+          {currentPage === 'followups' && (
+            <FollowUpsPage user={user} onNavigate={handleNavigate} />
           )}
         </main>
       </div>

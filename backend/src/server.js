@@ -7,6 +7,9 @@ const authRoutes = require('./routes/auth.routes');
 const leadRoutes = require('./routes/lead.routes');
 const integrationRoutes = require('./routes/integration.routes');
 const userRoutes = require('./routes/user.routes');
+const attendanceRoutes = require('./routes/attendance.routes');
+const callRoutes = require('./routes/call.routes');
+const followupRoutes = require('./routes/followup.routes');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -28,6 +31,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/leads', leadRoutes);
 app.use('/api/integrations', integrationRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api/calls', callRoutes);
+app.use('/api/followups', followupRoutes);
 
 // 404 Handler
 app.use((req, res) => {

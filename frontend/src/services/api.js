@@ -67,3 +67,47 @@ export const leadService = {
 
   getCounsellors: () => apiFetch('/users/counsellors'),
 };
+
+export const attendanceService = {
+  logout: () => apiFetch('/attendance/logout', { method: 'POST' }),
+
+  getAttendance: (params = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, val]) => {
+      if (val !== undefined && val !== null && val !== '') {
+        query.append(key, val);
+      }
+    });
+    return apiFetch(`/attendance?${query.toString()}`);
+  },
+
+  getMyAttendance: () => apiFetch('/attendance/me'),
+};
+
+export const callService = {
+  createCall: (payload) => apiFetch('/calls', { method: 'POST', body: JSON.stringify(payload) }),
+
+  getCalls: (params = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, val]) => {
+      if (val !== undefined && val !== null && val !== '') {
+        query.append(key, val);
+      }
+    });
+    return apiFetch(`/calls?${query.toString()}`);
+  },
+};
+
+export const followupService = {
+  getFollowUps: (params = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, val]) => {
+      if (val !== undefined && val !== null && val !== '') {
+        query.append(key, val);
+      }
+    });
+    return apiFetch(`/followups?${query.toString()}`);
+  },
+
+  completeFollowUp: (id) => apiFetch(`/followups/${id}/complete`, { method: 'PATCH' }),
+};
