@@ -5,7 +5,7 @@ const prisma = require('../utils/prisma');
 
 /**
  * POST /api/auth/login
- * Handles user login using email and password, and records server-side attendance.
+ * Handles user login using email and password, and records server-side attendance & presence.
  */
 const login = async (req, res, next) => {
   try {
@@ -54,8 +54,9 @@ const login = async (req, res, next) => {
       });
     }
 
-    // 5. Record Server-Side Attendance (Asia/Kolkata timezone safe)
-    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+    // 5. Record Server-Side Attendance (Asia/Kolkata timezone safe) & initial lastSeenAt
+    const now = new Date();
+    const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
     const workDate = new Date(`${todayStr}T00:00:00.000Z`);
 
     try {
@@ -67,12 +68,14 @@ const login = async (req, res, next) => {
           },
         },
         update: {
-          updatedAt: new Date(),
+          lastSeenAt: now,
+          updatedAt: now,
         },
         create: {
           userId: user.id,
           workDate,
-          loginAt: new Date(),
+          loginAt: now,
+          lastSeenAt: now,
         },
       });
     } catch (attErr) {

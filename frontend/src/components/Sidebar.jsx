@@ -42,7 +42,15 @@ export default function Sidebar({ user, currentPage, onNavigate }) {
           <span>Lead Management</span>
         </div>
 
-        <span className="nav-group-label" style={{ marginTop: '0.75rem' }}>Phase 3 Activity</span>
+        <div
+          className={`sidebar-link ${currentPage === 'tasks' || currentPage === 'task_details' ? 'active' : ''}`}
+          onClick={() => onNavigate('tasks')}
+        >
+          <span className="sidebar-link-icon">✅</span>
+          <span>Tasks</span>
+        </div>
+
+        <span className="nav-group-label" style={{ marginTop: '0.75rem' }}>Activity & Tracking</span>
 
         <div
           className={`sidebar-link ${currentPage === 'attendance' ? 'active' : ''}`}

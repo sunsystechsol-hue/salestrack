@@ -10,6 +10,8 @@ const userRoutes = require('./routes/user.routes');
 const attendanceRoutes = require('./routes/attendance.routes');
 const callRoutes = require('./routes/call.routes');
 const followupRoutes = require('./routes/followup.routes');
+const taskRoutes = require('./routes/task.routes');
+const dashboardRoutes = require('./routes/dashboard.routes');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -34,6 +36,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/calls', callRoutes);
 app.use('/api/followups', followupRoutes);
+app.use('/api/tasks', taskRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // 404 Handler
 app.use((req, res) => {

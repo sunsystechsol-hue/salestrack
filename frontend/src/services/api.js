@@ -69,6 +69,8 @@ export const leadService = {
 };
 
 export const attendanceService = {
+  heartbeat: () => apiFetch('/attendance/logout'.replace('logout', 'heartbeat'), { method: 'POST' }),
+
   logout: () => apiFetch('/attendance/logout', { method: 'POST' }),
 
   getAttendance: (params = {}) => {
@@ -110,4 +112,32 @@ export const followupService = {
   },
 
   completeFollowUp: (id) => apiFetch(`/followups/${id}/complete`, { method: 'PATCH' }),
+};
+
+export const taskService = {
+  getTasks: (params = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, val]) => {
+      if (val !== undefined && val !== null && val !== '') {
+        query.append(key, val);
+      }
+    });
+    return apiFetch(`/tasks?${query.toString()}`);
+  },
+
+  getTask: (id) => apiFetch(`/tasks/${id}`),
+
+  createTask: (payload) => apiFetch('/tasks', { method: 'POST', body: JSON.stringify(payload) }),
+
+  updateTask: (id, payload) => apiFetch(`/tasks/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+
+  updateTaskStatus: (id, status) =>
+    apiFetch(`/tasks/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+
+  reassignTask: (id, userId) =>
+    apiFetch(`/tasks/${id}/reassign`, { method: 'PATCH', body: JSON.stringify({ userId }) }),
+};
+
+export const dashboardService = {
+  getCounsellorDashboard: () => apiFetch('/dashboard/counsellor'),
 };

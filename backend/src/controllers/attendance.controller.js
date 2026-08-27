@@ -1,12 +1,108 @@
 const prisma = require('../utils/prisma');
 const { attendanceQuerySchema } = require('../validators/attendance.validator');
 
+const INACTIVITY_THRESHOLD_MS = parseInt(process.env.INACTIVITY_THRESHOLD_MS || '300000', 10); // 5 minutes default
+
 const getZodDetails = (error) => {
   const issues = error?.issues || error?.errors || [];
   return issues.map((e) => ({
     field: Array.isArray(e.path) ? e.path.join('.') : String(e.path),
     message: e.message,
   }));
+};
+
+/**
+ * Computes live presence status and active session attributes.
+ * Server controls threshold and reference timestamps.
+ */
+function computePresence(rec, now = new Date()) {
+  if (!rec) {
+    return {
+      isLiveActive: false,
+      presenceStatus: 'OFFLINE',
+      lastSeenAt: null,
+      liveWorkingMins: 0,
+    };
+  }
+
+  const loginTime = new Date(rec.loginAt).getTime();
+  const nowTime = now.getTime();
+
+  if (rec.logoutAt) {
+    return {
+      isLiveActive: false,
+      presenceStatus: 'LOGGED_OUT',
+      lastSeenAt: rec.lastSeenAt || rec.logoutAt,
+      liveWorkingMins: rec.totalMins || Math.max(0, Math.round((new Date(rec.logoutAt).getTime() - loginTime) / 60000)),
+    };
+  }
+
+  const refTime = rec.lastSeenAt
+    ? new Date(rec.lastSeenAt).getTime()
+    : loginTime;
+
+  const isLiveActive = nowTime - refTime <= INACTIVITY_THRESHOLD_MS;
+  const presenceStatus = isLiveActive ? 'ACTIVE' : 'INACTIVE';
+  const liveWorkingMins = Math.max(0, Math.round((nowTime - loginTime) / 60000));
+
+  return {
+    isLiveActive,
+    presenceStatus,
+    lastSeenAt: rec.lastSeenAt || rec.loginAt,
+    liveWorkingMins,
+  };
+}
+
+/**
+ * POST /api/attendance/heartbeat
+ * Protected heartbeat endpoint. Server updates lastSeenAt timestamp.
+ * Rejects client overrides for loginAt, logoutAt, totalMins, or lastSeenAt.
+ */
+const heartbeat = async (req, res, next) => {
+  try {
+    const userId = req.user.id; // Strictly from JWT
+    const now = new Date();
+
+    const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+    const workDate = new Date(`${todayStr}T00:00:00.000Z`);
+
+    // Upsert today's attendance & update lastSeenAt
+    const attendance = await prisma.attendance.upsert({
+      where: {
+        userId_workDate: {
+          userId,
+          workDate,
+        },
+      },
+      update: {
+        lastSeenAt: now,
+        updatedAt: now,
+      },
+      create: {
+        userId,
+        workDate,
+        loginAt: now,
+        lastSeenAt: now,
+      },
+    });
+
+    const presence = computePresence(attendance, now);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Heartbeat received',
+      attendance: {
+        id: attendance.id,
+        workDate: attendance.workDate,
+        loginAt: attendance.loginAt,
+        logoutAt: attendance.logoutAt,
+        lastSeenAt: attendance.lastSeenAt,
+        ...presence,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
 /**
@@ -55,9 +151,12 @@ const logoutAttendance = async (req, res, next) => {
       where: { id: attendance.id },
       data: {
         logoutAt: now,
+        lastSeenAt: now,
         totalMins,
       },
     });
+
+    const presence = computePresence(updated, now);
 
     return res.status(200).json({
       success: true,
@@ -67,7 +166,9 @@ const logoutAttendance = async (req, res, next) => {
         workDate: updated.workDate,
         loginAt: updated.loginAt,
         logoutAt: updated.logoutAt,
+        lastSeenAt: updated.lastSeenAt,
         totalMins: updated.totalMins,
+        ...presence,
       },
     });
   } catch (error) {
@@ -77,7 +178,7 @@ const logoutAttendance = async (req, res, next) => {
 
 /**
  * GET /api/attendance
- * Retrieves attendance records with role-based isolation.
+ * Retrieves attendance records with live presence indicators and role-based isolation.
  */
 const getAttendance = async (req, res, next) => {
   try {
@@ -106,6 +207,7 @@ const getAttendance = async (req, res, next) => {
     }
 
     const skip = (page - 1) * limit;
+    const now = new Date();
 
     const [total, records] = await Promise.all([
       prisma.attendance.count({ where }),
@@ -127,10 +229,15 @@ const getAttendance = async (req, res, next) => {
       }),
     ]);
 
+    const mappedRecords = records.map((rec) => ({
+      ...rec,
+      ...computePresence(rec, now),
+    }));
+
     const totalPages = Math.ceil(total / limit);
 
     return res.status(200).json({
-      data: records,
+      data: mappedRecords,
       pagination: {
         page,
         limit,
@@ -145,16 +252,23 @@ const getAttendance = async (req, res, next) => {
 
 /**
  * GET /api/attendance/me
- * Retrieves current user's attendance history.
+ * Retrieves current user's attendance history with live presence attributes.
  */
 const getMyAttendance = async (req, res, next) => {
   try {
+    const now = new Date();
     const records = await prisma.attendance.findMany({
       where: { userId: req.user.id },
       orderBy: { workDate: 'desc' },
       take: 30,
     });
-    return res.status(200).json(records);
+
+    const mappedRecords = records.map((rec) => ({
+      ...rec,
+      ...computePresence(rec, now),
+    }));
+
+    return res.status(200).json(mappedRecords);
   } catch (error) {
     next(error);
   }
@@ -167,6 +281,7 @@ const getMyAttendance = async (req, res, next) => {
 const getAttendanceById = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const now = new Date();
 
     const record = await prisma.attendance.findUnique({
       where: { id },
@@ -188,15 +303,21 @@ const getAttendanceById = async (req, res, next) => {
       });
     }
 
-    return res.status(200).json(record);
+    return res.status(200).json({
+      ...record,
+      ...computePresence(record, now),
+    });
   } catch (error) {
     next(error);
   }
 };
 
 module.exports = {
+  heartbeat,
   logoutAttendance,
   getAttendance,
   getMyAttendance,
   getAttendanceById,
+  computePresence,
+  INACTIVITY_THRESHOLD_MS,
 };

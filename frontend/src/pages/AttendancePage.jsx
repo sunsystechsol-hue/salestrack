@@ -8,8 +8,8 @@ export default function AttendancePage({ user }) {
   const [error, setError] = useState('');
   const [workDateFilter, setWorkDateFilter] = useState('');
 
-  const fetchAttendance = async () => {
-    setLoading(true);
+  const fetchAttendance = async (silent = false) => {
+    if (!silent) setLoading(true);
     setError('');
     try {
       const data = await attendanceService.getAttendance({
@@ -17,21 +17,62 @@ export default function AttendancePage({ user }) {
       });
       setRecords(data.data || []);
     } catch (err) {
-      setError(err.message);
+      if (!silent) setError(err.message);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchAttendance();
+
+    // Auto-refresh presence every 15 seconds
+    const interval = setInterval(() => {
+      fetchAttendance(true);
+    }, 15000);
+
+    return () => clearInterval(interval);
   }, [workDateFilter]);
 
-  const formatDuration = (totalMins) => {
-    if (totalMins === null || totalMins === undefined) return 'Active Session';
-    const hrs = Math.floor(totalMins / 60);
-    const mins = totalMins % 60;
-    return `${hrs}h ${mins}m (${totalMins} mins)`;
+  const formatDuration = (totalMins, loginAt, logoutAt) => {
+    let mins = totalMins;
+    if (mins === null || mins === undefined) {
+      if (loginAt && !logoutAt) {
+        mins = Math.max(0, Math.round((new Date().getTime() - new Date(loginAt).getTime()) / 60000));
+      } else {
+        return '—';
+      }
+    }
+    const hrs = Math.floor(mins / 60);
+    const remainderMins = mins % 60;
+    return `${hrs}h ${remainderMins}m (${mins} mins)`;
+  };
+
+  const renderPresenceBadge = (rec) => {
+    if (rec.logoutAt || rec.presenceStatus === 'LOGGED_OUT') {
+      return (
+        <span className="badge-status" style={{ backgroundColor: '#f1f5f9', color: '#475569', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+          <span style={{ height: '7px', width: '7px', borderRadius: '50%', backgroundColor: '#94a3b8' }}></span>
+          LOGGED OUT
+        </span>
+      );
+    }
+
+    if (rec.isLiveActive || rec.presenceStatus === 'ACTIVE') {
+      return (
+        <span className="badge-status" style={{ backgroundColor: '#dcfce7', color: '#15803d', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+          <span style={{ height: '7px', width: '7px', borderRadius: '50%', backgroundColor: '#22c55e', animation: 'pulse 2s infinite' }}></span>
+          LIVE ACTIVE
+        </span>
+      );
+    }
+
+    return (
+      <span className="badge-status" style={{ backgroundColor: '#fef3c7', color: '#b45309', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+        <span style={{ height: '7px', width: '7px', borderRadius: '50%', backgroundColor: '#eab308' }}></span>
+        INACTIVE / IDLE
+      </span>
+    );
   };
 
   const isManagerOrAdmin = user?.role === 'ADMIN' || user?.role === 'MANAGER';
@@ -41,12 +82,12 @@ export default function AttendancePage({ user }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
         <div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text-main)' }}>
-            Employee Attendance & Session History
+            Live Employee Presence & Attendance Tracking
           </h2>
           <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '0.15rem' }}>
             {isManagerOrAdmin
-              ? 'Track employee login timestamps, logout records, and server-calculated working duration.'
-              : 'View your login timestamps, logout history, and working duration.'}
+              ? 'Real-time employee presence status, heartbeat activity, login timestamps, and working time.'
+              : 'Real-time view of your current session presence, login timestamps, and live working time.'}
           </p>
         </div>
       </div>
@@ -80,7 +121,7 @@ export default function AttendancePage({ user }) {
       {/* Attendance Table */}
       <div className="crm-table-container">
         {loading ? (
-          <LoadingState message="Loading attendance records..." />
+          <LoadingState message="Loading presence and attendance records..." />
         ) : records.length === 0 ? (
           <EmptyState title="No attendance records found" description="No login sessions recorded for the selected filter." />
         ) : (
@@ -91,9 +132,9 @@ export default function AttendancePage({ user }) {
                 {isManagerOrAdmin && <th>Role</th>}
                 <th>Work Date</th>
                 <th>Login Time (IST)</th>
-                <th>Logout Time (IST)</th>
-                <th>Working Duration</th>
-                <th>Session Status</th>
+                <th>Last Heartbeat / Logout</th>
+                <th>Live Working Time</th>
+                <th>Presence Status</th>
               </tr>
             </thead>
             <tbody>
@@ -117,26 +158,20 @@ export default function AttendancePage({ user }) {
                     {new Date(rec.loginAt).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' })}
                   </td>
                   <td style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
-                    {rec.logoutAt
-                      ? new Date(rec.logoutAt).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' })
-                      : '—'}
+                    {rec.logoutAt ? (
+                      `Logout: ${new Date(rec.logoutAt).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' })}`
+                    ) : rec.lastSeenAt ? (
+                      `Active: ${new Date(rec.lastSeenAt).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', second: '2-digit' })}`
+                    ) : (
+                      '—'
+                    )}
                   </td>
                   <td>
                     <strong style={{ color: rec.logoutAt ? 'var(--color-text-main)' : 'var(--color-primary)' }}>
-                      {formatDuration(rec.totalMins)}
+                      {formatDuration(rec.totalMins || rec.liveWorkingMins, rec.loginAt, rec.logoutAt)}
                     </strong>
                   </td>
-                  <td>
-                    {rec.logoutAt ? (
-                      <span className="badge-status" style={{ backgroundColor: '#f1f5f9', color: '#475569' }}>
-                        COMPLETED
-                      </span>
-                    ) : (
-                      <span className="badge-status" style={{ backgroundColor: '#dcfce7', color: '#15803d' }}>
-                        ACTIVE SESSION
-                      </span>
-                    )}
-                  </td>
+                  <td>{renderPresenceBadge(rec)}</td>
                 </tr>
               ))}
             </tbody>
