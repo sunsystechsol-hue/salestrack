@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import FormField from '../components/FormField';
 
 export default function LoginPage({ onLoginSuccess }) {
   const [email, setEmail] = useState('');
@@ -41,49 +42,52 @@ export default function LoginPage({ onLoginSuccess }) {
   };
 
   return (
-    <div className="auth-container">
-      <div className="brand-header">
-        <h1 className="brand-title">KaushalSaathi Tracker</h1>
-        <p className="brand-subtitle">Phase 1 — Employee Authentication</p>
+    <div className="login-container">
+      <div className="login-card">
+        <div className="login-brand">
+          <div className="login-brand-logo">KS</div>
+          <h1 className="login-brand-title">KaushalSaathi CRM</h1>
+          <p className="login-brand-subtitle">Task, Lead & Sales Tracker Platform</p>
+        </div>
+
+        {error && <div className="alert-banner alert-error">{error}</div>}
+
+        <form onSubmit={handleSubmit}>
+          <FormField label="Work Email Address" required>
+            <input
+              id="email"
+              type="email"
+              className="form-input"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="admin@kaushalsaathi.com"
+              required
+              autoFocus
+            />
+          </FormField>
+
+          <FormField label="Password" required>
+            <input
+              id="password"
+              type="password"
+              className="form-input"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+            />
+          </FormField>
+
+          <button
+            type="submit"
+            className="btn btn-primary"
+            style={{ width: '100%', marginTop: '0.75rem', padding: '0.75rem' }}
+            disabled={loading}
+          >
+            {loading ? 'Authenticating...' : 'Sign In to Account'}
+          </button>
+        </form>
       </div>
-
-      {error && <div className="error-banner">{error}</div>}
-
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label className="form-label" htmlFor="email">
-            Email Address
-          </label>
-          <input
-            id="email"
-            type="email"
-            className="form-input"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="admin@kaushalsaathi.com"
-            required
-          />
-        </div>
-
-        <div className="form-group">
-          <label className="form-label" htmlFor="password">
-            Password
-          </label>
-          <input
-            id="password"
-            type="password"
-            className="form-input"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            required
-          />
-        </div>
-
-        <button type="submit" className="btn-primary" disabled={loading}>
-          {loading ? 'Authenticating...' : 'Sign In'}
-        </button>
-      </form>
     </div>
   );
 }

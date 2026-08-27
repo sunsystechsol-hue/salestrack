@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { leadService } from '../services/api';
+import StatusBadge from '../components/StatusBadge';
+import Modal from '../components/Modal';
+import FormField from '../components/FormField';
+import { LoadingState, EmptyState } from '../components/LoadingState';
 
 export default function LeadsPage({ user, onNavigate }) {
   const [leads, setLeads] = useState([]);
@@ -20,6 +24,7 @@ export default function LeadsPage({ user, onNavigate }) {
   const [assignCounsellorId, setAssignCounsellorId] = useState('');
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [modalSubmitting, setModalSubmitting] = useState(false);
 
   // New Lead form state
   const [newLead, setNewLead] = useState({
@@ -82,6 +87,7 @@ export default function LeadsPage({ user, onNavigate }) {
     e.preventDefault();
     if (!selectedLead || !assignCounsellorId) return;
 
+    setModalSubmitting(true);
     try {
       if (selectedLead.assignedToId) {
         await leadService.reassignLead(selectedLead.id, assignCounsellorId);
@@ -92,11 +98,14 @@ export default function LeadsPage({ user, onNavigate }) {
       fetchLeads(pagination.page);
     } catch (err) {
       alert(`Assignment failed: ${err.message}`);
+    } finally {
+      setModalSubmitting(false);
     }
   };
 
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
+    setModalSubmitting(true);
     try {
       await leadService.createLead(newLead);
       setShowCreateModal(false);
@@ -104,94 +113,99 @@ export default function LeadsPage({ user, onNavigate }) {
       fetchLeads(1);
     } catch (err) {
       alert(`Creation failed: ${err.message}`);
+    } finally {
+      setModalSubmitting(false);
     }
   };
 
   return (
-    <div className="app-container">
-      <div className="controls-bar">
+    <div>
+      {/* Header Toolbar & Primary Action */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
         <div>
-          <h1 className="brand-title" style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>
-            Lead Management
-          </h1>
-          <p className="brand-subtitle">Phase 2 — Leads Overview & Workflow</p>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text-main)' }}>Lead Directory</h2>
+          <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '0.15rem' }}>
+            {canManageAssignment
+              ? 'View, search, assign, and track prospect enquiries across sales counsellors.'
+              : 'View and track your assigned prospect enquiries.'}
+          </p>
         </div>
 
         {canManageAssignment && (
-          <button className="btn-primary" onClick={() => setShowCreateModal(true)}>
+          <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
             + Create New Lead
           </button>
         )}
       </div>
 
-      {/* Filter Controls */}
-      <form onSubmit={handleSearchSubmit} className="controls-bar" style={{ background: 'rgba(15,23,42,0.4)', padding: '1rem', borderRadius: '12px' }}>
-        <div className="filters-group">
-          <input
-            type="text"
-            className="form-input search-input"
-            placeholder="Search by name, phone, course, city..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+      {/* Search & Filter Toolbar Card */}
+      <div className="toolbar-card">
+        <form onSubmit={handleSearchSubmit} className="toolbar-grid">
+          <div style={{ flex: 1, minWidth: '240px' }}>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="Search by name, phone, course, city, or response ID..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
 
-          <select
-            className="form-select"
-            style={{ width: '160px' }}
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="">All Statuses</option>
-            <option value="NEW">NEW</option>
-            <option value="ASSIGNED">ASSIGNED</option>
-            <option value="CONTACTED">CONTACTED</option>
-            <option value="INTERESTED">INTERESTED</option>
-            <option value="NOT_INTERESTED">NOT INTERESTED</option>
-            <option value="FOLLOW_UP">FOLLOW UP</option>
-            <option value="INQUIRY">INQUIRY</option>
-            <option value="CONVERTED">CONVERTED</option>
-            <option value="LOST">LOST</option>
-          </select>
-
-          {canManageAssignment && (
+          <div style={{ width: '170px' }}>
             <select
               className="form-select"
-              style={{ width: '180px' }}
-              value={counsellorFilter}
-              onChange={(e) => setCounsellorFilter(e.target.value)}
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
             >
-              <option value="">All Counsellors</option>
-              {counsellors.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
+              <option value="">All Statuses</option>
+              <option value="NEW">NEW</option>
+              <option value="ASSIGNED">ASSIGNED</option>
+              <option value="CONTACTED">CONTACTED</option>
+              <option value="INTERESTED">INTERESTED</option>
+              <option value="NOT_INTERESTED">NOT INTERESTED</option>
+              <option value="FOLLOW_UP">FOLLOW UP</option>
+              <option value="INQUIRY">INQUIRY</option>
+              <option value="CONVERTED">CONVERTED</option>
+              <option value="LOST">LOST</option>
             </select>
+          </div>
+
+          {canManageAssignment && (
+            <div style={{ width: '190px' }}>
+              <select
+                className="form-select"
+                value={counsellorFilter}
+                onChange={(e) => setCounsellorFilter(e.target.value)}
+              >
+                <option value="">All Counsellors</option>
+                {counsellors.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           )}
 
-          <button type="submit" className="btn-secondary">
-            Search
+          <button type="submit" className="btn btn-secondary">
+            Filter Results
           </button>
-        </div>
-      </form>
+        </form>
+      </div>
 
-      {error && <div className="error-banner" style={{ marginTop: '1rem' }}>{error}</div>}
+      {error && <div className="alert-banner alert-error" style={{ marginBottom: '1.25rem' }}>{error}</div>}
 
-      {/* Leads Table */}
-      <div className="table-container" style={{ marginTop: '1.5rem' }}>
+      {/* Enterprise Data Table */}
+      <div className="crm-table-container">
         {loading ? (
-          <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            Loading leads...
-          </div>
+          <LoadingState message="Fetching leads dataset..." />
         ) : leads.length === 0 ? (
-          <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            No leads found matching criteria.
-          </div>
+          <EmptyState title="No leads match criteria" description="Try clearing search keywords or status filter." />
         ) : (
-          <table className="data-table">
+          <table className="crm-table">
             <thead>
               <tr>
-                <th>Name</th>
+                <th>Lead Name</th>
                 <th>Phone</th>
                 <th>Course</th>
                 <th>City</th>
@@ -206,37 +220,43 @@ export default function LeadsPage({ user, onNavigate }) {
                 <tr key={lead.id}>
                   <td>
                     <strong
-                      style={{ color: 'var(--accent-blue)', cursor: 'pointer' }}
+                      style={{ color: 'var(--color-primary)', cursor: 'pointer' }}
                       onClick={() => onNavigate('lead_details', { id: lead.id })}
                     >
                       {lead.name}
                     </strong>
                   </td>
-                  <td>{lead.phone}</td>
+                  <td style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{lead.phone}</td>
                   <td>{lead.course || '—'}</td>
                   <td>{lead.city || '—'}</td>
                   <td>{lead.source || '—'}</td>
                   <td>
-                    <span className={`badge-status badge-${lead.status}`}>{lead.status}</span>
+                    <StatusBadge status={lead.status} />
                   </td>
-                  <td>{lead.assignedTo?.name || <span style={{ opacity: 0.5 }}>Unassigned</span>}</td>
                   <td>
-                    <button
-                      className="btn-secondary"
-                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', marginRight: '0.5rem' }}
-                      onClick={() => onNavigate('lead_details', { id: lead.id })}
-                    >
-                      View
-                    </button>
-                    {canManageAssignment && (
-                      <button
-                        className="btn-primary"
-                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
-                        onClick={() => handleOpenAssignModal(lead)}
-                      >
-                        {lead.assignedToId ? 'Reassign' : 'Assign'}
-                      </button>
+                    {lead.assignedTo?.name ? (
+                      <span style={{ fontWeight: 500, color: 'var(--color-text-main)' }}>{lead.assignedTo.name}</span>
+                    ) : (
+                      <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Unassigned</span>
                     )}
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => onNavigate('lead_details', { id: lead.id })}
+                      >
+                        View
+                      </button>
+                      {canManageAssignment && (
+                        <button
+                          className="btn btn-primary btn-sm"
+                          onClick={() => handleOpenAssignModal(lead)}
+                        >
+                          {lead.assignedToId ? 'Reassign' : 'Assign'}
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -245,141 +265,146 @@ export default function LeadsPage({ user, onNavigate }) {
         )}
       </div>
 
-      {/* Pagination Bar */}
-      <div className="pagination-bar">
-        <div>
-          Showing page {pagination.page} of {pagination.totalPages || 1} ({pagination.total} total leads)
-        </div>
-        <div className="pagination-controls">
-          <button
-            className="btn-secondary"
-            disabled={pagination.page <= 1}
-            onClick={() => fetchLeads(pagination.page - 1)}
-          >
-            Previous
-          </button>
-          <button
-            className="btn-secondary"
-            disabled={pagination.page >= pagination.totalPages}
-            onClick={() => fetchLeads(pagination.page + 1)}
-          >
-            Next
-          </button>
-        </div>
-      </div>
-
-      {/* Assign/Reassign Modal */}
-      {showAssignModal && selectedLead && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3>{selectedLead.assignedToId ? 'Reassign Lead' : 'Assign Lead'}</h3>
-              <button className="btn-secondary" onClick={() => setShowAssignModal(false)}>✕</button>
-            </div>
-            <form onSubmit={handleAssignSubmit}>
-              <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)' }}>
-                Lead: <strong>{selectedLead.name}</strong> ({selectedLead.phone})
-              </p>
-              <div className="form-group">
-                <label className="form-label">Select Active Counsellor</label>
-                <select
-                  className="form-select"
-                  value={assignCounsellorId}
-                  onChange={(e) => setAssignCounsellorId(e.target.value)}
-                  required
-                >
-                  <option value="">-- Choose Counsellor --</option>
-                  {counsellors.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.email})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-                <button type="submit" className="btn-primary" style={{ flex: 1 }}>Save Assignment</button>
-                <button type="button" className="btn-secondary" onClick={() => setShowAssignModal(false)}>Cancel</button>
-              </div>
-            </form>
+      {/* Pagination Footer */}
+      {!loading && leads.length > 0 && (
+        <div className="pagination-container">
+          <div>
+            Showing Page <strong>{pagination.page}</strong> of <strong>{pagination.totalPages || 1}</strong> ({pagination.total} total records)
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button
+              className="btn btn-secondary btn-sm"
+              disabled={pagination.page <= 1}
+              onClick={() => fetchLeads(pagination.page - 1)}
+            >
+              ← Previous
+            </button>
+            <button
+              className="btn btn-secondary btn-sm"
+              disabled={pagination.page >= pagination.totalPages}
+              onClick={() => fetchLeads(pagination.page + 1)}
+            >
+              Next →
+            </button>
           </div>
         </div>
       )}
+
+      {/* Assign / Reassign Modal */}
+      <Modal
+        isOpen={showAssignModal && !!selectedLead}
+        onClose={() => setShowAssignModal(false)}
+        title={selectedLead?.assignedToId ? 'Reassign Lead Record' : 'Assign Lead Record'}
+      >
+        <form onSubmit={handleAssignSubmit}>
+          <p style={{ marginBottom: '1.25rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+            Assigning Lead: <strong style={{ color: 'var(--color-text-main)' }}>{selectedLead?.name}</strong> ({selectedLead?.phone})
+          </p>
+
+          <FormField label="Select Target Sales Counsellor" required>
+            <select
+              className="form-select"
+              value={assignCounsellorId}
+              onChange={(e) => setAssignCounsellorId(e.target.value)}
+              required
+            >
+              <option value="">-- Choose Active Counsellor --</option>
+              {counsellors.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} ({c.email})
+                </option>
+              ))}
+            </select>
+          </FormField>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
+            <button type="button" className="btn btn-secondary" onClick={() => setShowAssignModal(false)}>
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={modalSubmitting}>
+              {modalSubmitting ? 'Saving...' : 'Save Assignment'}
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Create Lead Modal */}
-      {showCreateModal && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '600px' }}>
-            <div className="modal-header">
-              <h3>Create New Lead</h3>
-              <button className="btn-secondary" onClick={() => setShowCreateModal(false)}>✕</button>
-            </div>
-            <form onSubmit={handleCreateSubmit}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Full Name *</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={newLead.name}
-                    onChange={(e) => setNewLead({ ...newLead, name: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Phone *</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={newLead.phone}
-                    onChange={(e) => setNewLead({ ...newLead, phone: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Email</label>
-                  <input
-                    type="email"
-                    className="form-input"
-                    value={newLead.email}
-                    onChange={(e) => setNewLead({ ...newLead, email: e.target.value })}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Course</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={newLead.course}
-                    onChange={(e) => setNewLead({ ...newLead, course: e.target.value })}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">City</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={newLead.city}
-                    onChange={(e) => setNewLead({ ...newLead, city: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Notes</label>
-                <textarea
-                  className="form-input"
-                  rows="3"
-                  value={newLead.notes}
-                  onChange={(e) => setNewLead({ ...newLead, notes: e.target.value })}
-                ></textarea>
-              </div>
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-                <button type="submit" className="btn-primary" style={{ flex: 1 }}>Create Lead</button>
-                <button type="button" className="btn-secondary" onClick={() => setShowCreateModal(false)}>Cancel</button>
-              </div>
-            </form>
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="Create New Lead Record"
+        maxWidth="600px"
+      >
+        <form onSubmit={handleCreateSubmit}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <FormField label="Full Name" required>
+              <input
+                type="text"
+                className="form-input"
+                value={newLead.name}
+                onChange={(e) => setNewLead({ ...newLead, name: e.target.value })}
+                required
+              />
+            </FormField>
+
+            <FormField label="Phone Number" required>
+              <input
+                type="text"
+                className="form-input"
+                value={newLead.phone}
+                onChange={(e) => setNewLead({ ...newLead, phone: e.target.value })}
+                required
+              />
+            </FormField>
+
+            <FormField label="Email Address">
+              <input
+                type="email"
+                className="form-input"
+                value={newLead.email}
+                onChange={(e) => setNewLead({ ...newLead, email: e.target.value })}
+              />
+            </FormField>
+
+            <FormField label="Interested Course">
+              <input
+                type="text"
+                className="form-input"
+                value={newLead.course}
+                onChange={(e) => setNewLead({ ...newLead, course: e.target.value })}
+              />
+            </FormField>
+
+            <FormField label="City">
+              <input
+                type="text"
+                className="form-input"
+                value={newLead.city}
+                onChange={(e) => setNewLead({ ...newLead, city: e.target.value })}
+              />
+            </FormField>
           </div>
-        </div>
-      )}
+
+          <FormField label="Counsellor Notes">
+            <textarea
+              className="form-textarea"
+              rows="3"
+              value={newLead.notes}
+              onChange={(e) => setNewLead({ ...newLead, notes: e.target.value })}
+              placeholder="Initial requirements, conversation background..."
+            ></textarea>
+          </FormField>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
+            <button type="button" className="btn btn-secondary" onClick={() => setShowCreateModal(false)}>
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={modalSubmitting}>
+              {modalSubmitting ? 'Creating...' : 'Create Lead'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

@@ -3,6 +3,8 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import LeadsPage from './pages/LeadsPage';
 import LeadDetailsPage from './pages/LeadDetailsPage';
+import Sidebar from './components/Sidebar';
+import Header from './components/Header';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -54,42 +56,38 @@ export default function App() {
     return <LoginPage onLoginSuccess={handleLoginSuccess} />;
   }
 
+  const getPageTitle = () => {
+    switch (currentPage) {
+      case 'dashboard':
+        return 'Executive Overview';
+      case 'leads':
+        return 'Lead Management';
+      case 'lead_details':
+        return 'Lead Record Details';
+      default:
+        return 'Dashboard';
+    }
+  };
+
   return (
-    <>
-      <nav className="nav-bar">
-        <div style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--accent-blue)', cursor: 'pointer' }} onClick={() => handleNavigate('dashboard')}>
-          KaushalSaathi Tracker
-        </div>
-        <div className="nav-links">
-          <span
-            className={`nav-item ${currentPage === 'dashboard' ? 'active' : ''}`}
-            onClick={() => handleNavigate('dashboard')}
-          >
-            Dashboard
-          </span>
-          <span
-            className={`nav-item ${currentPage === 'leads' || currentPage === 'lead_details' ? 'active' : ''}`}
-            onClick={() => handleNavigate('leads')}
-          >
-            Lead Management
-          </span>
-          <span className="nav-item" onClick={handleLogout} style={{ color: '#f87171' }}>
-            Logout ({user.name})
-          </span>
-        </div>
-      </nav>
+    <div className="app-layout">
+      <Sidebar user={user} currentPage={currentPage} onNavigate={handleNavigate} />
+      <div className="main-wrapper">
+        <Header user={user} title={getPageTitle()} onLogout={handleLogout} />
+        <main className="main-content">
+          {currentPage === 'dashboard' && (
+            <DashboardPage user={user} onLogout={handleLogout} onNavigate={handleNavigate} />
+          )}
 
-      {currentPage === 'dashboard' && (
-        <DashboardPage user={user} onLogout={handleLogout} onNavigate={handleNavigate} />
-      )}
+          {currentPage === 'leads' && (
+            <LeadsPage user={user} onNavigate={handleNavigate} />
+          )}
 
-      {currentPage === 'leads' && (
-        <LeadsPage user={user} onNavigate={handleNavigate} />
-      )}
-
-      {currentPage === 'lead_details' && selectedLeadId && (
-        <LeadDetailsPage leadId={selectedLeadId} onNavigate={handleNavigate} />
-      )}
-    </>
+          {currentPage === 'lead_details' && selectedLeadId && (
+            <LeadDetailsPage leadId={selectedLeadId} onNavigate={handleNavigate} />
+          )}
+        </main>
+      </div>
+    </div>
   );
 }
