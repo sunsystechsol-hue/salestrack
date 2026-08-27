@@ -1,0 +1,157 @@
+// Prisma Schema for KaushalSaathi Task, Lead & Sales Performance Tracker - Phase 1
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ----------------------------------------------------
+// ENUMS
+// ----------------------------------------------------
+
+enum Role {
+  ADMIN
+  MANAGER
+  COUNSELLOR
+}
+
+enum LeadStatus {
+  NEW
+  ASSIGNED
+  CONTACTED
+  INTERESTED
+  NOT_INTERESTED
+  FOLLOW_UP
+  INQUIRY
+  CONVERTED
+  LOST
+}
+
+enum CallOutcome {
+  INTERESTED
+  NOT_INTERESTED
+  FOLLOW_UP_REQUIRED
+  INQUIRY
+  CALL_BACK
+  NO_RESPONSE
+  WRONG_NUMBER
+  CONVERTED
+  OTHER
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+// ----------------------------------------------------
+// MODELS
+// ----------------------------------------------------
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  phone        String?
+  passwordHash String
+  role         Role     @default(COUNSELLOR)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  attendance    Attendance[]
+  assignedLeads Lead[]       @relation("AssignedLeads")
+  callLogs      CallLog[]
+  tasks         Task[]
+
+  @@index([email])
+  @@index([role])
+}
+
+model Attendance {
+  id        String    @id @default(uuid())
+  userId    String
+  workDate  DateTime  @db.Date
+  loginAt   DateTime  @default(now())
+  logoutAt  DateTime?
+  totalMins Int?
+  notes     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, workDate])
+}
+
+model Lead {
+  id             String     @id @default(uuid())
+  name           String
+  phone          String
+  email          String?
+  source         String?
+  course         String?
+  city           String?
+  formResponseId String?    @unique
+  status         LeadStatus @default(NEW)
+  assignedToId   String?
+  nextFollowUp   DateTime?
+  notes          String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  assignedTo User?     @relation("AssignedLeads", fields: [assignedToId], references: [id], onDelete: SetNull)
+  callLogs   CallLog[]
+  tasks      Task[]
+
+  @@index([status])
+  @@index([assignedToId])
+  @@index([phone])
+  @@index([nextFollowUp])
+}
+
+model CallLog {
+  id           String      @id @default(uuid())
+  leadId       String
+  userId       String
+  calledAt     DateTime    @default(now())
+  durationSec  Int         @default(0)
+  outcome      CallOutcome
+  remarks      String?
+  nextFollowUp DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@index([userId])
+  @@index([calledAt])
+}
+
+model Task {
+  id          String     @id @default(uuid())
+  title       String
+  description String?
+  status      TaskStatus @default(PENDING)
+  dueAt       DateTime?
+  completedAt DateTime?
+  userId      String
+  leadId      String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lead Lead? @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([status])
+  @@index([dueAt])
+}
