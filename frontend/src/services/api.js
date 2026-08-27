@@ -141,3 +141,60 @@ export const taskService = {
 export const dashboardService = {
   getCounsellorDashboard: () => apiFetch('/dashboard/counsellor'),
 };
+
+export const reportService = {
+  getSummary: (params = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, val]) => {
+      if (val !== undefined && val !== null && val !== '') query.append(key, val);
+    });
+    return apiFetch(`/reports/management/summary?${query.toString()}`);
+  },
+
+  getPerformance: (params = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, val]) => {
+      if (val !== undefined && val !== null && val !== '') query.append(key, val);
+    });
+    return apiFetch(`/reports/management/performance?${query.toString()}`);
+  },
+
+  getCalls: (params = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, val]) => {
+      if (val !== undefined && val !== null && val !== '') query.append(key, val);
+    });
+    return apiFetch(`/reports/management/calls?${query.toString()}`);
+  },
+
+  getLeads: () => apiFetch('/reports/management/leads'),
+
+  getAttendance: (params = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, val]) => {
+      if (val !== undefined && val !== null && val !== '') query.append(key, val);
+    });
+    return apiFetch(`/reports/management/attendance?${query.toString()}`);
+  },
+
+  getFollowups: (params = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, val]) => {
+      if (val !== undefined && val !== null && val !== '') query.append(key, val);
+    });
+    return apiFetch(`/reports/management/followups?${query.toString()}`);
+  },
+
+  getTasks: (params = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, val]) => {
+      if (val !== undefined && val !== null && val !== '') query.append(key, val);
+    });
+    return apiFetch(`/reports/management/tasks?${query.toString()}`);
+  },
+
+  exportCSVUrl: (type = 'performance', params = {}) => {
+    const query = new URLSearchParams({ type, ...params });
+    return `/api/reports/management/export?${query.toString()}`;
+  },
+};

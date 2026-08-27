@@ -11,6 +11,8 @@ export default function Sidebar({ user, currentPage, onNavigate }) {
       .slice(0, 2);
   };
 
+  const isManagerOrAdmin = user?.role === 'ADMIN' || user?.role === 'MANAGER';
+
   return (
     <aside className="crm-sidebar">
       {/* Brand Section */}
@@ -49,6 +51,29 @@ export default function Sidebar({ user, currentPage, onNavigate }) {
           <span className="sidebar-link-icon">✅</span>
           <span>Tasks</span>
         </div>
+
+        {/* Management & Reports Links (ADMIN & MANAGER Only) */}
+        {isManagerOrAdmin && (
+          <>
+            <span className="nav-group-label" style={{ marginTop: '0.75rem' }}>Management & Intelligence</span>
+
+            <div
+              className={`sidebar-link ${currentPage === 'management_dashboard' ? 'active' : ''}`}
+              onClick={() => onNavigate('management_dashboard')}
+            >
+              <span className="sidebar-link-icon">📈</span>
+              <span>Management Dashboard</span>
+            </div>
+
+            <div
+              className={`sidebar-link ${currentPage === 'reports' ? 'active' : ''}`}
+              onClick={() => onNavigate('reports')}
+            >
+              <span className="sidebar-link-icon">📄</span>
+              <span>Reports & Analytics</span>
+            </div>
+          </>
+        )}
 
         <span className="nav-group-label" style={{ marginTop: '0.75rem' }}>Activity & Tracking</span>
 

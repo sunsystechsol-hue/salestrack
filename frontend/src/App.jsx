@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
+import ManagementDashboardPage from './pages/ManagementDashboardPage';
+import ReportsPage from './pages/ReportsPage';
 import LeadsPage from './pages/LeadsPage';
 import LeadDetailsPage from './pages/LeadDetailsPage';
 import AttendancePage from './pages/AttendancePage';
@@ -56,7 +58,11 @@ export default function App() {
 
   const handleLoginSuccess = (userData) => {
     setUser(userData);
-    setCurrentPage('dashboard');
+    if (userData.role === 'ADMIN' || userData.role === 'MANAGER') {
+      setCurrentPage('management_dashboard');
+    } else {
+      setCurrentPage('dashboard');
+    }
   };
 
   const handleLogout = async () => {
@@ -91,6 +97,10 @@ export default function App() {
     switch (currentPage) {
       case 'dashboard':
         return user.role === 'COUNSELLOR' ? 'My Daily Performance Dashboard' : 'Executive Overview';
+      case 'management_dashboard':
+        return 'Executive Management Dashboard';
+      case 'reports':
+        return 'Management Reports & Business Intelligence';
       case 'leads':
         return 'Lead Directory';
       case 'lead_details':
@@ -118,6 +128,14 @@ export default function App() {
         <main className="main-content">
           {currentPage === 'dashboard' && (
             <DashboardPage user={user} onLogout={handleLogout} onNavigate={handleNavigate} />
+          )}
+
+          {currentPage === 'management_dashboard' && (
+            <ManagementDashboardPage user={user} onNavigate={handleNavigate} />
+          )}
+
+          {currentPage === 'reports' && (
+            <ReportsPage user={user} onNavigate={handleNavigate} />
           )}
 
           {currentPage === 'leads' && (
