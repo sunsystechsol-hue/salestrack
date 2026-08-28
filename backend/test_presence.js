@@ -149,6 +149,79 @@ async function runPresenceTestSuite() {
     }
     console.log('  ✔ Admin & Manager successfully retrieve team live presence overview.');
 
+    // ----------------------------------------------------
+    // G. Re-login After Logout on Same Business Date Regression Test
+    // ----------------------------------------------------
+    console.log('\n[Test G] Re-login After Logout on Same Business Date...');
+
+    // 1. First login for counsellor2
+    const loginReq1 = { body: { email: counsellor2.email, password: process.env.SEED_COUNSELLOR_PASSWORD || 'CounsellorPassword123' } };
+    const loginRes1 = createMockRes();
+    await authController.login(loginReq1, loginRes1, (e) => { if (e) throw e; });
+    if (loginRes1.statusCode !== 200) {
+      throw new Error(`First login failed: ${JSON.stringify(loginRes1.data)}`);
+    }
+
+    // Verify initial presence is LIVE ACTIVE
+    const myAttRes1 = createMockRes();
+    await attendanceController.getMyAttendance({ user: counsellor2 }, myAttRes1, (e) => { if (e) throw e; });
+    const todayAtt1 = myAttRes1.data[0];
+    if (!todayAtt1 || todayAtt1.presenceStatus !== 'ACTIVE' || !todayAtt1.isLiveActive || todayAtt1.logoutAt !== null) {
+      throw new Error(`First login presence state invalid: ${JSON.stringify(todayAtt1)}`);
+    }
+    console.log('  ✔ First login created active attendance session with logoutAt = null, presence = ACTIVE.');
+
+    // 2. Perform logout for counsellor2
+    const logoutReq = { user: counsellor2, body: {} };
+    const logoutRes = createMockRes();
+    await attendanceController.logoutAttendance(logoutReq, logoutRes, (e) => { if (e) throw e; });
+    if (logoutRes.statusCode !== 200 || !logoutRes.data.attendance.logoutAt) {
+      throw new Error(`Logout failed: ${JSON.stringify(logoutRes.data)}`);
+    }
+
+    // Verify presence is now LOGGED_OUT
+    const myAttRes2 = createMockRes();
+    await attendanceController.getMyAttendance({ user: counsellor2 }, myAttRes2, (e) => { if (e) throw e; });
+    const todayAtt2 = myAttRes2.data[0];
+    if (!todayAtt2 || todayAtt2.presenceStatus !== 'LOGGED_OUT' || !todayAtt2.logoutAt) {
+      throw new Error(`Logout presence state invalid: ${JSON.stringify(todayAtt2)}`);
+    }
+    console.log('  ✔ Logout recorded logoutAt timestamp and set presence = LOGGED_OUT.');
+
+    // 3. Re-login counsellor2 on the same day
+    const loginReq2 = { body: { email: counsellor2.email, password: process.env.SEED_COUNSELLOR_PASSWORD || 'CounsellorPassword123' } };
+    const loginRes2 = createMockRes();
+    await authController.login(loginReq2, loginRes2, (e) => { if (e) throw e; });
+    if (loginRes2.statusCode !== 200) {
+      throw new Error(`Re-login failed: ${JSON.stringify(loginRes2.data)}`);
+    }
+
+    // Verify session reopened: logoutAt is null, lastSeenAt is recent, presence is LIVE ACTIVE
+    const myAttRes3 = createMockRes();
+    await attendanceController.getMyAttendance({ user: counsellor2 }, myAttRes3, (e) => { if (e) throw e; });
+    const todayAtt3Records = myAttRes3.data.filter((r) => {
+      const recDate = new Date(r.workDate).toISOString().split('T')[0];
+      const todayDate = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+      return recDate === todayDate;
+    });
+
+    if (todayAtt3Records.length !== 1) {
+      throw new Error(`Expected exactly 1 attendance record for today, found ${todayAtt3Records.length}`);
+    }
+
+    const todayAtt3 = todayAtt3Records[0];
+    if (todayAtt3.logoutAt !== null) {
+      throw new Error(`Re-login failed to clear logoutAt! Still had logoutAt: ${todayAtt3.logoutAt}`);
+    }
+    if (!todayAtt3.isLiveActive || todayAtt3.presenceStatus !== 'ACTIVE') {
+      throw new Error(`Re-login presence state is not LIVE ACTIVE: ${JSON.stringify(todayAtt3)}`);
+    }
+    const recentLastSeen = new Date(todayAtt3.lastSeenAt).getTime();
+    if (Math.abs(Date.now() - recentLastSeen) > 5000) {
+      throw new Error('Re-login did not update lastSeenAt with recent server timestamp!');
+    }
+    console.log('  ✔ Re-login cleared logoutAt (null), updated lastSeenAt, restored LIVE ACTIVE presence, and maintained single attendance record.');
+
     console.log('\n===========================================================');
     console.log('   ALL PRESENCE TESTS PASSED SUCCESSFULLY! 🚀');
     console.log('===========================================================\n');

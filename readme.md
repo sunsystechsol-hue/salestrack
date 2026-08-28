@@ -1330,3 +1330,35 @@ tracker.kaushalsaathi.com
 This README is based on the internal **KaushalSaathi.com Task, Lead & Sales Performance Tracker — Project Requirements & Technical Specification** provided for the development team.
 
 The specification defines the project's modules, roles, workflows, database design, technology stack, application screens, reports, security requirements, deliverables and development phases.
+
+---
+
+## 🛡️ Phase 6 — Production Hardening & Verification
+
+Phase 6 hardens, verifies, and documents the complete application for production deployment.
+
+### 1. Automated & Manual Verification
+- **Automated Regression Suite**: Full test coverage across Phase 2 (`test_phase2.js`), Phase 3 (`test_phase3.js`), Phase 4 (`test_phase4.js`), Live Presence (`test_presence.js`), Phase 5 (`test_phase5.js`), and Phase 6 (`test_phase6.js`).
+- **Browser Role Verification**: End-to-end testing of `ADMIN`, `MANAGER`, and `COUNSELLOR` user roles, verifying route protection, sidebar navigation restrictions, and UI component behavior.
+- **Frontend Production Build**: Verified using `npm run build` (Vite) with 0 errors.
+
+### 2. Live Employee Presence & Re-Login Lifecycle
+- **Same-Day Re-Login Behavior**: When an employee logs in multiple times on the same `Asia/Kolkata` business date, the system reopens the existing daily `Attendance` record (`logoutAt: null`, `loginAt: now`, `lastSeenAt: now`) while preserving accumulated historical `totalMins` and keeping `liveWorkingMins` accurate.
+- **Heartbeat & Inactivity**: Client heartbeats sent every 45s maintain `LIVE ACTIVE` status; sessions automatically transition to `INACTIVE / IDLE` after 5 minutes of missing heartbeats without logging out.
+
+### 3. Timezone & Data Protection
+- **Timezone**: All business-date calculations, daily summaries, and date-range filters adhere strictly to `Asia/Kolkata` timezone semantics.
+- **Authentication & RBAC**: HMAC SHA-256 JWT tokens with 24-hour expiration. Backend route middleware (`authorizeRoles`) enforces role boundaries (`COUNSELLOR` access to `/api/reports/management/*` is blocked with HTTP 403 Forbidden).
+- **Server-Controlled Timestamps**: `loginAt`, `logoutAt`, `lastSeenAt`, `calledAt`, and `completedAt` are generated server-side (`new Date()`) to prevent client manipulation.
+- **Security & Secret Audit**: Scanned codebase for credential leaks; verified `passwordHash`, `JWT_SECRET`, database connection strings, and webhook tokens are never exposed in API outputs or CSV exports. `.env`, `node_modules`, and `frontend/dist` are git-ignored.
+
+### 4. Dependency Vulnerability Audit
+- **Backend Audit**: Identified 3 high-severity vulnerabilities in transitive devDependency `deepmerge-ts` nested within `@prisma/config` CLI tooling. Determined as acceptable development-time risk pending an upstream Prisma patch (remediation via `npm audit fix --force` would force a breaking Prisma downgrade).
+- **Frontend Audit**: 0 vulnerabilities.
+
+### 5. Technical Documentation Links
+- [API Reference](API.md) — Complete REST API reference.
+- [Deployment & Backup Guide](DEPLOYMENT.md) — NGINX proxy setup, PM2 process management, PostgreSQL backup/recovery.
+- [Security Architecture](SECURITY.md) — Security controls, JWT specifications, RBAC rules.
+- [Phase 6 Audit & Verification Report](PHASE6_REPORT.md) — Full test execution log and production readiness assessment.
+

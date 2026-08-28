@@ -68,6 +68,8 @@ const login = async (req, res, next) => {
           },
         },
         update: {
+          loginAt: now,
+          logoutAt: null,
           lastSeenAt: now,
           updatedAt: now,
         },
