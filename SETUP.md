@@ -1,6 +1,6 @@
 # KaushalSaathi — Local Setup Guide
 
-This guide provides step-by-step instructions for configuring and running the **KaushalSaathi Task, Lead & Sales Performance Tracker** in a local development environment.
+This guide provides step-by-step instructions for configuring, testing, and running the **KaushalSaathi Task, Lead & Sales Performance Tracker** in a local development environment.
 
 ---
 
@@ -14,6 +14,7 @@ Ensure the following tools are installed on your workstation before starting:
 | **npm** | v9.0.0+ | v10.x | Package manager |
 | **PostgreSQL** | v14.0+ | v16.x | Relational database engine |
 | **Git** | v2.30+ | Latest | Version control |
+| **ngrok** | Latest | Latest | Tunneling tool for testing webhooks locally |
 
 ---
 
@@ -67,7 +68,7 @@ salestrack/
    NODE_ENV="development"
 
    # Webhook Security Secret
-   GOOGLE_FORM_WEBHOOK_SECRET="YOUR_WEBHOOK_SECRET_HERE"
+   GOOGLE_FORM_WEBHOOK_SECRET="<YOUR_WEBHOOK_SECRET>"
 
    # Seed Account Configuration
    SEED_ADMIN_EMAIL="admin@kaushalsaathi.com"
@@ -184,7 +185,193 @@ Perform a quick sanity check across core workflows:
 
 ---
 
-## 9. Run Automated Test Suites
+## 9. Google Form → SalesTrack Lead Integration
+
+The Google Form integration automatically creates a new SalesTrack lead in the database whenever a student enquiry is submitted via a Google Form.
+
+### Verified Architecture & Data Flow
+
+```text
+Google Form
+→ Google Apps Script onFormSubmit Trigger
+→ ngrok HTTPS Tunnel
+→ SalesTrack Backend
+→ Webhook Authentication & Validation
+→ PostgreSQL
+→ SalesTrack Lead Directory
+```
+
+### Required Form Fields & Field Mapping
+
+| Google Form Field | SalesTrack Field | Required | Notes |
+|---|---|---|---|
+| **Name** | `name` | Yes | Prospect full name |
+| **Phone** | `phone` | Yes | Contact phone number |
+| **Email** | `email` | Optional | Email address |
+| **Course** | `course` | Optional | Interested course/program |
+| **City** | `city` | Optional | Prospect city location |
+
+> [!TIP]
+> Question titles extracted in Google Apps Script are normalized using `.trim()` to remove trailing whitespace (e.g., `"Name "`) and prevent field mapping errors.
+
+### Backend Webhook Specification
+
+- **Endpoint**: `POST /api/integrations/google-form`
+- **Header**: `X-Webhook-Secret: <YOUR_WEBHOOK_SECRET>`
+- **Content-Type**: `application/json`
+- **Behavior**:
+  - Accepts JSON payload containing form responses.
+  - Validates request payload against Zod schema.
+  - Prevents duplicate submissions using `formResponseId`.
+  - Creates a new Lead in PostgreSQL with:
+    - `source = "Google Form"`
+    - `status = "NEW"`
+    - `assignedToId = null` (Unassigned)
+
+Safe environment variable configuration:
+```env
+GOOGLE_FORM_WEBHOOK_SECRET=<YOUR_WEBHOOK_SECRET>
+```
+
+### Local Development Setup with ngrok
+
+1. Start the SalesTrack backend:
+   ```bash
+   cd D:\salestrack\backend
+   node .\src\server.js
+   ```
+   *(Backend runs on `http://localhost:5000`)*
+
+2. Start an ngrok tunnel on port 5000:
+   ```bash
+   ngrok http 5000
+   ```
+
+3. Construct the public webhook URL:
+   ```text
+   <NGROK_PUBLIC_URL>/api/integrations/google-form
+   ```
+
+**Important Guidelines**:
+- Both the backend server and ngrok tunnel must remain running during testing.
+- If the ngrok tunnel is restarted, update the webhook URL in Google Apps Script with the new public URL.
+
+### Google Apps Script Configuration
+
+Configure the Google Apps Script bound to your Google Form with an `onFormSubmit` trigger.
+
+**Trigger Settings**:
+- **Choose function to run**: `onFormSubmit`
+- **Select event source**: `From form`
+- **Select event type**: `On form submit`
+
+**Safe Apps Script Code Example**:
+```javascript
+// Google Apps Script snippet for SalesTrack Webhook
+
+const WEBHOOK_URL = "<NGROK_PUBLIC_URL>/api/integrations/google-form";
+const WEBHOOK_SECRET = "<YOUR_WEBHOOK_SECRET>"; // Matches GOOGLE_FORM_WEBHOOK_SECRET in backend/.env
+
+function onFormSubmit(e) {
+  try {
+    const response = e.response;
+    const itemResponses = response.getItemResponses();
+    
+    const rawData = {};
+    for (let i = 0; i < itemResponses.length; i++) {
+      const itemResponse = itemResponses[i];
+      // Normalize question title by trimming whitespace
+      const question = itemResponse.getItem().getTitle().trim();
+      const answer = itemResponse.getResponse();
+      rawData[question] = answer;
+    }
+
+    const payload = {
+      formResponseId: response.getId(),
+      name: rawData["Name"] || "",
+      phone: rawData["Phone"] || "",
+      email: rawData["Email"] || "",
+      course: rawData["Course"] || "",
+      city: rawData["City"] || ""
+    };
+
+    if (!payload.email && response.getRespondentEmail()) {
+      payload.email = response.getRespondentEmail();
+    }
+
+    const options = {
+      method: "post",
+      contentType: "application/json",
+      headers: {
+        "X-Webhook-Secret": WEBHOOK_SECRET
+      },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    };
+
+    const res = UrlFetchApp.fetch(WEBHOOK_URL, options);
+    Logger.log("Webhook Response Status: " + res.getResponseCode());
+    Logger.log("Webhook Response Body: " + res.getContentText());
+  } catch (err) {
+    Logger.log("Webhook Error: " + err.toString());
+  }
+}
+```
+
+### End-to-End Testing Procedure
+
+1. Start the SalesTrack backend (`http://localhost:5000`).
+2. Start ngrok on port 5000 (`ngrok http 5000`).
+3. Copy the generated public HTTPS ngrok URL.
+4. Update `WEBHOOK_URL` in Google Apps Script.
+5. Set `WEBHOOK_SECRET` matching `GOOGLE_FORM_WEBHOOK_SECRET` in `backend/.env`.
+6. Confirm the `onFormSubmit` trigger is saved.
+7. Submit a test response via the Google Form.
+8. Open Apps Script → **Executions** and verify `onFormSubmit` completed cleanly.
+9. Inspect backend/ngrok terminal logs for the incoming request.
+10. Confirm backend responds with `HTTP 201 Created` (`"Lead created successfully"`).
+11. Open SalesTrack CRM Lead Directory UI (`http://localhost:3001/leads`).
+12. Verify the new lead appears with `Source = Google Form` and `Status = NEW`.
+
+### Verified Test Results
+
+The integration was verified end-to-end in local testing:
+
+| Test Stage | Result |
+|---|---|
+| Google Form submission | PASS |
+| Apps Script trigger | PASS |
+| Form data extraction | PASS |
+| Field title normalization (`.trim()`) | PASS |
+| Webhook secret authentication | PASS |
+| Backend payload validation | PASS |
+| Lead creation | PASS |
+| Database persistence | PASS |
+| Lead Directory UI display | PASS |
+| Source = `Google Form` | PASS |
+| Status = `NEW` | PASS |
+
+The API response returned `HTTP 201 Created` with `"Lead created successfully"`.
+
+### Integration Troubleshooting
+
+| Problem | Possible Cause | Solution |
+|---|---|---|
+| **401 Unauthorized** | Webhook secret mismatch | Verify `X-Webhook-Secret` matches `GOOGLE_FORM_WEBHOOK_SECRET` |
+| **400 name/phone empty** | Form question title contains trailing whitespace | Use `.trim()` on `getTitle()` in Apps Script |
+| **No Apps Script execution** | Trigger missing or inactive | Check Apps Script → Triggers → `onFormSubmit` |
+| **ngrok request not received** | Backend or ngrok stopped | Ensure both backend server and ngrok tunnel are running |
+| **404 Webhook Not Found** | Incorrect endpoint path or HTTP method | Verify endpoint is `POST /api/integrations/google-form` |
+| **Old ngrok URL error** | ngrok tunnel restarted | Update `WEBHOOK_URL` in Apps Script with new ngrok domain |
+| **Lead not visible in UI** | Page not refreshed | Refresh Lead Directory page or verify backend response |
+
+### Production Note
+
+> The Google Form integration has been verified end-to-end in the local development environment using ngrok. Production use requires a stable public backend URL and appropriate production infrastructure.
+
+---
+
+## 10. Run Automated Test Suites
 
 The backend includes comprehensive test suites. From `backend/`:
 
@@ -203,7 +390,7 @@ node test_phase2.js; node test_phase3.js; node test_phase4.js; node test_presenc
 
 ---
 
-## 10. Frontend Production Build
+## 11. Frontend Production Build
 
 To verify the production bundle build from `frontend/`:
 
@@ -215,7 +402,7 @@ This compiles static production assets into `frontend/dist/`.
 
 ---
 
-## 11. Troubleshooting & Common Issues
+## 12. Troubleshooting & Common Issues
 
 - **Backend Port 5000 in Use**:
   Identify the process using port 5000:
@@ -235,11 +422,12 @@ This compiles static production assets into `frontend/dist/`.
 
 ---
 
-## 12. Git Safety & Security Policy
+## 13. Git Safety & Security Policy
 
 To prevent sensitive credentials and build artifacts from leaking:
 
 - **Ignored Files**: Never commit `.env`, `node_modules/`, or `frontend/dist/`.
+- **Secret Protection**: Never put real passwords, JWT keys, database connection strings, or webhook secrets in code or documentation.
 - **Verify Ignored Status**:
   ```bash
   git check-ignore backend/.env backend/node_modules frontend/node_modules frontend/dist
@@ -251,7 +439,7 @@ To prevent sensitive credentials and build artifacts from leaking:
 
 ---
 
-## 13. Project Documentation Links
+## 14. Project Documentation Links
 
 For further technical documentation, refer to:
 - [README.md](README.md) — System Architecture & Feature Overview
@@ -259,10 +447,11 @@ For further technical documentation, refer to:
 - [DEPLOYMENT.md](DEPLOYMENT.md) — Production Deployment & NGINX Configuration
 - [SECURITY.md](SECURITY.md) — Security Architecture & RBAC Policy
 - [PHASE6_REPORT.md](PHASE6_REPORT.md) — Verification & Audit Report
+- [google-form-integration.md](docs/google-form-integration.md) — Detailed Google Form Integration Guide
 
 ---
 
-## 14. Setup Complete Checklist
+## 15. Setup Complete Checklist
 
 - [x] Node.js and PostgreSQL installed and running locally
 - [x] `backend/.env` configured from `.env.example`
@@ -271,3 +460,4 @@ For further technical documentation, refer to:
 - [x] Frontend running on `http://localhost:3001`
 - [x] Logged in successfully as Admin, Manager, and Counsellor
 - [x] All 6 automated backend test suites passed 100%
+- [x] Google Form webhook integration verified via ngrok
