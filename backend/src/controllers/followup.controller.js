@@ -41,9 +41,9 @@ const getFollowUps = async (req, res, next) => {
 
     // Role-based visibility enforcement
     if (req.user.role === 'COUNSELLOR') {
-      where.lead = { assignedToId: req.user.id };
+      where.userId = req.user.id;
     } else if (counsellorId) {
-      where.lead = { assignedToId: counsellorId };
+      where.userId = counsellorId;
     }
 
     // Status filtering logic
@@ -125,10 +125,10 @@ const completeFollowUp = async (req, res, next) => {
       return res.status(404).json({ error: 'NotFound', message: 'Follow-up call log not found' });
     }
 
-    if (req.user.role === 'COUNSELLOR' && callLog.lead.assignedToId !== req.user.id) {
+    if (req.user.role === 'COUNSELLOR' && callLog.userId !== req.user.id) {
       return res.status(403).json({
         error: 'Forbidden',
-        message: 'Access denied: You can only complete follow-ups for your assigned leads',
+        message: 'Access denied: You can only complete your own follow-ups',
       });
     }
 

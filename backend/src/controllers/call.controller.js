@@ -117,7 +117,7 @@ const getCalls = async (req, res, next) => {
 
     // Role-based visibility enforcement
     if (req.user.role === 'COUNSELLOR') {
-      where.lead = { assignedToId: req.user.id };
+      where.userId = req.user.id;
     }
 
     const skip = (page - 1) * limit;
@@ -180,10 +180,10 @@ const getCallById = async (req, res, next) => {
       return res.status(404).json({ error: 'NotFound', message: 'Call log not found' });
     }
 
-    if (req.user.role === 'COUNSELLOR' && call.lead.assignedToId !== req.user.id) {
+    if (req.user.role === 'COUNSELLOR' && call.userId !== req.user.id) {
       return res.status(403).json({
         error: 'Forbidden',
-        message: 'Access denied: You can only view call logs for your assigned leads',
+        message: 'Access denied: You can only view your own call logs',
       });
     }
 
