@@ -6,19 +6,13 @@ async function main() {
   console.log('Seeding initial development users...');
 
   const adminEmail = process.env.SEED_ADMIN_EMAIL || 'admin@kaushalsaathi.com';
-  const adminPass = process.env.SEED_ADMIN_PASSWORD;
+  const adminPass = process.env.SEED_ADMIN_PASSWORD || 'Admin@12345';
 
   const managerEmail = process.env.SEED_MANAGER_EMAIL || 'manager@kaushalsaathi.com';
-  const managerPass = process.env.SEED_MANAGER_PASSWORD;
+  const managerPass = process.env.SEED_MANAGER_PASSWORD || 'Manager@12345';
 
   const counsellorEmail = process.env.SEED_COUNSELLOR_EMAIL || 'counsellor@kaushalsaathi.com';
-  const counsellorPass = process.env.SEED_COUNSELLOR_PASSWORD;
-
-  if (!adminPass || !managerPass || !counsellorPass) {
-    throw new Error(
-      'Missing required seed passwords in environment variables (SEED_ADMIN_PASSWORD, SEED_MANAGER_PASSWORD, SEED_COUNSELLOR_PASSWORD)'
-    );
-  }
+  const counsellorPass = process.env.SEED_COUNSELLOR_PASSWORD || 'Counsellor@12345';
 
   const passwordHash = await bcrypt.hash(adminPass, 10);
   const managerPasswordHash = await bcrypt.hash(managerPass, 10);
