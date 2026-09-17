@@ -3,7 +3,8 @@
  * Automatically attaches Bearer JWT authentication header from localStorage.
  */
 
-const API_BASE = '/api';
+const rawBase = import.meta.env.VITE_API_URL || '';
+const API_BASE = rawBase ? `${rawBase.replace(/\/$/, '')}/api` : '/api';
 
 export async function apiFetch(endpoint, options = {}) {
   const token = localStorage.getItem('auth_token');

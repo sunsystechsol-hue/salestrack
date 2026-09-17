@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: kaushalsaathi-backend
+    env: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npm run build && npm run prisma:deploy
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: GOOGLE_FORM_WEBHOOK_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        value: "*"

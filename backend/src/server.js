@@ -20,9 +20,21 @@ const PORT = process.env.PORT || 5000;
 
 // Security & Middleware
 app.use(helmet());
+
+const corsOriginSetting = process.env.CORS_ORIGIN;
+const allowedOrigins = corsOriginSetting
+  ? corsOriginSetting.split(',').map((origin) => origin.trim())
+  : null;
+
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || '*',
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (!allowedOrigins || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(null, true);
+    },
     credentials: true,
   })
 );
@@ -54,7 +66,7 @@ app.use(errorHandler);
 
 // Only listen if not required by tests
 if (require.main === module) {
-  app.listen(PORT, () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`[Server] KaushalSaathi Tracker Backend running on port ${PORT} (${process.env.NODE_ENV || 'development'} mode)`);
   });
 }
