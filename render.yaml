@@ -18,3 +18,14 @@ services:
         generateValue: true
       - key: CORS_ORIGIN
         value: "*"
+
+  - type: static
+    name: kaushalsaathi-ui
+    plan: free
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
