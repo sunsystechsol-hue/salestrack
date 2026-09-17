@@ -3,7 +3,7 @@
  * Automatically attaches Bearer JWT authentication header from localStorage.
  */
 
-const rawBase = import.meta.env.VITE_API_URL || '';
+const rawBase = import.meta.env.VITE_API_URL || 'https://kaushalsaathi-backend.onrender.com';
 const API_BASE = rawBase ? `${rawBase.replace(/\/$/, '')}/api` : '/api';
 
 export async function apiFetch(endpoint, options = {}) {
