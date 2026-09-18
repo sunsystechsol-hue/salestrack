@@ -4,7 +4,30 @@
  */
 
 const rawBase = import.meta.env.VITE_API_URL || 'https://kaushalsaathi-backend.onrender.com';
-const API_BASE = rawBase ? `${rawBase.replace(/\/$/, '')}/api` : '/api';
+export const API_BASE = rawBase ? `${rawBase.replace(/\/$/, '')}/api` : '/api';
+
+export const authService = {
+  login: async (email, password) => {
+    const response = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      const errorMessage = data.message || (response.status === 405
+        ? 'Login endpoint not accessible (HTTP 405)'
+        : `Login failed with status ${response.status}`);
+      throw new Error(errorMessage);
+    }
+
+    return data;
+  },
+};
 
 export async function apiFetch(endpoint, options = {}) {
   const token = localStorage.getItem('auth_token');
@@ -196,6 +219,6 @@ export const reportService = {
 
   exportCSVUrl: (type = 'performance', params = {}) => {
     const query = new URLSearchParams({ type, ...params });
-    return `/api/reports/management/export?${query.toString()}`;
+    return `${API_BASE}/reports/management/export?${query.toString()}`;
   },
 };

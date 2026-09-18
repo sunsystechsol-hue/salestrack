@@ -4,10 +4,10 @@ const { login } = require('../controllers/auth.controller');
 
 const router = express.Router();
 
-// Strict rate limiter for authentication routes (e.g. max 10 requests per 15 minutes)
+// Rate limiter for authentication routes (e.g. max 30 requests per 15 minutes)
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 30,
   message: {
     error: 'TooManyRequests',
     message: 'Too many login attempts from this IP, please try again after 15 minutes.',

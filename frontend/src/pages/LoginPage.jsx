@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import FormField from '../components/FormField';
+import { authService } from '../services/api';
 
 export default function LoginPage({ onLoginSuccess }) {
   const [email, setEmail] = useState('');
@@ -13,19 +14,7 @@ export default function LoginPage({ onLoginSuccess }) {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Login failed. Please check your credentials.');
-      }
+      const data = await authService.login(email, password);
 
       // Store JWT token and user info
       localStorage.setItem('auth_token', data.token);
@@ -35,7 +24,7 @@ export default function LoginPage({ onLoginSuccess }) {
         onLoginSuccess(data.user);
       }
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }
