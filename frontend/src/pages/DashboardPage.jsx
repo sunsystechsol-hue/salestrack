@@ -297,12 +297,19 @@ export default function DashboardPage({ user, onLogout, onNavigate }) {
               Corporate overview of team leads, task assignments, and conversion progress.
             </p>
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button className="btn btn-secondary" onClick={() => onNavigate('tasks')}>
-              Manage Tasks →
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button
+              className="btn btn-primary"
+              style={{ backgroundColor: '#2563eb' }}
+              onClick={() => onNavigate('management_dashboard')}
+            >
+              📊 {user?.role === 'ADMIN' ? 'Open Full Admin Dashboard →' : 'Open Management Dashboard →'}
             </button>
-            <button className="btn btn-primary" onClick={() => onNavigate('leads')}>
-              Manage Leads →
+            <button className="btn btn-secondary" onClick={() => onNavigate('tasks')}>
+              Tasks →
+            </button>
+            <button className="btn btn-secondary" onClick={() => onNavigate('leads')}>
+              Leads →
             </button>
           </div>
         </div>

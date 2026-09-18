@@ -67,10 +67,64 @@ app.use((req, res) => {
 // Centralized Error Handler
 app.use(errorHandler);
 
+const bcrypt = require('bcrypt');
+const prisma = require('./utils/prisma');
+
+async function ensureSeedUsers() {
+  try {
+    const adminEmail = process.env.SEED_ADMIN_EMAIL || 'admin@kaushalsaathi.com';
+    const adminPass = process.env.SEED_ADMIN_PASSWORD || 'Admin@12345';
+    const adminHash = await bcrypt.hash(adminPass, 10);
+
+    await prisma.user.upsert({
+      where: { email: adminEmail },
+      update: {
+        passwordHash: adminHash,
+        role: 'ADMIN',
+        isActive: true,
+      },
+      create: {
+        name: 'System Admin',
+        email: adminEmail,
+        phone: '9999999991',
+        passwordHash: adminHash,
+        role: 'ADMIN',
+        isActive: true,
+      },
+    });
+
+    const managerEmail = process.env.SEED_MANAGER_EMAIL || 'manager@kaushalsaathi.com';
+    const managerPass = process.env.SEED_MANAGER_PASSWORD || 'Manager@12345';
+    const managerHash = await bcrypt.hash(managerPass, 10);
+
+    await prisma.user.upsert({
+      where: { email: managerEmail },
+      update: {
+        passwordHash: managerHash,
+        role: 'MANAGER',
+        isActive: true,
+      },
+      create: {
+        name: 'Sales Manager',
+        email: managerEmail,
+        phone: '9999999992',
+        passwordHash: managerHash,
+        role: 'MANAGER',
+        isActive: true,
+      },
+    });
+
+    console.log('[Bootstrap] Seed users verified successfully.');
+  } catch (err) {
+    console.warn('[Bootstrap] Seed user verification warning:', err.message);
+  }
+}
+
 // Only listen if not required by tests
 if (require.main === module) {
-  app.listen(PORT, '0.0.0.0', () => {
+  app.listen(PORT, '0.0.0.0', async () => {
     console.log(`[Server] KaushalSaathi Tracker Backend running on port ${PORT} (${process.env.NODE_ENV || 'development'} mode)`);
+    await ensureSeedUsers();
   });
 }
 

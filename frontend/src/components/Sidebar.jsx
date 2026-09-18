@@ -30,10 +30,10 @@ export default function Sidebar({ user, currentPage, onNavigate }) {
 
         <div
           className={`sidebar-link ${currentPage === 'dashboard' ? 'active' : ''}`}
-          onClick={() => onNavigate('dashboard')}
+          onClick={() => onNavigate(user?.role === 'ADMIN' ? 'management_dashboard' : 'dashboard')}
         >
           <span className="sidebar-link-icon">📊</span>
-          <span>Dashboard</span>
+          <span>{user?.role === 'ADMIN' ? 'Admin Dashboard' : user?.role === 'MANAGER' ? 'Manager Dashboard' : 'Dashboard'}</span>
         </div>
 
         <div
@@ -62,7 +62,7 @@ export default function Sidebar({ user, currentPage, onNavigate }) {
               onClick={() => onNavigate('management_dashboard')}
             >
               <span className="sidebar-link-icon">📈</span>
-              <span>Management Dashboard</span>
+              <span>{user?.role === 'ADMIN' ? 'Executive Admin Dashboard' : 'Management Dashboard'}</span>
             </div>
 
             <div

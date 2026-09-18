@@ -27,6 +27,28 @@ const getCounsellors = async (req, res, next) => {
   }
 };
 
+const getAllUsers = async (req, res, next) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return res.status(200).json(users);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getCounsellors,
+  getAllUsers,
 };

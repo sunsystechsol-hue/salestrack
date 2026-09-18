@@ -25,7 +25,13 @@ export default function App() {
     const token = localStorage.getItem('auth_token');
     if (storedUser && token) {
       try {
-        setUser(JSON.parse(storedUser));
+        const parsed = JSON.parse(storedUser);
+        setUser(parsed);
+        if (parsed.role === 'ADMIN' || parsed.role === 'MANAGER') {
+          setCurrentPage('management_dashboard');
+        } else {
+          setCurrentPage('dashboard');
+        }
       } catch (err) {
         localStorage.removeItem('user_info');
         localStorage.removeItem('auth_token');
@@ -98,7 +104,7 @@ export default function App() {
       case 'dashboard':
         return user.role === 'COUNSELLOR' ? 'My Daily Performance Dashboard' : 'Executive Overview';
       case 'management_dashboard':
-        return 'Executive Management Dashboard';
+        return user.role === 'ADMIN' ? 'Executive Admin Dashboard' : 'Executive Management Dashboard';
       case 'reports':
         return 'Management Reports & Business Intelligence';
       case 'leads':
