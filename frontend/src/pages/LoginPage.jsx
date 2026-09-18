@@ -30,12 +30,6 @@ export default function LoginPage({ onLoginSuccess }) {
     }
   };
 
-  const handleQuickFill = (demoEmail, demoPassword) => {
-    setEmail(demoEmail);
-    setPassword(demoPassword);
-    setError('');
-  };
-
   return (
     <div className="login-container">
       <div className="login-card">
@@ -43,39 +37,6 @@ export default function LoginPage({ onLoginSuccess }) {
           <div className="login-brand-logo">KS</div>
           <h1 className="login-brand-title">KaushalSaathi CRM</h1>
           <p className="login-brand-subtitle">Task, Lead & Sales Tracker Platform</p>
-        </div>
-
-        {/* Quick Demo Fill Buttons */}
-        <div style={{ marginBottom: '1.25rem' }}>
-          <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '0.4rem', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Quick Demo Credentials (1-Click Fill)
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.4rem' }}>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              style={{ fontSize: '0.75rem', padding: '0.4rem 0.2rem', textAlign: 'center', fontWeight: 600 }}
-              onClick={() => handleQuickFill('admin@kaushalsaathi.com', 'Admin@12345')}
-            >
-              👑 Admin
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              style={{ fontSize: '0.75rem', padding: '0.4rem 0.2rem', textAlign: 'center', fontWeight: 600 }}
-              onClick={() => handleQuickFill('manager@kaushalsaathi.com', 'Manager@12345')}
-            >
-              👔 Manager
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              style={{ fontSize: '0.75rem', padding: '0.4rem 0.2rem', textAlign: 'center', fontWeight: 600 }}
-              onClick={() => handleQuickFill('counsellor@kaushalsaathi.com', 'Counsellor@12345')}
-            >
-              🎧 Counsellor
-            </button>
-          </div>
         </div>
 
         {error && <div className="alert-banner alert-error">{error}</div>}
@@ -115,13 +76,6 @@ export default function LoginPage({ onLoginSuccess }) {
             {loading ? 'Authenticating...' : 'Sign In to Account'}
           </button>
         </form>
-
-        <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)', fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
-          <strong>Default Passwords:</strong><br />
-          • Admin: <code>Admin@12345</code> or <code>AdminPassword123!</code><br />
-          • Manager: <code>Manager@12345</code><br />
-          • Counsellor: <code>Counsellor@12345</code>
-        </div>
       </div>
     </div>
   );
