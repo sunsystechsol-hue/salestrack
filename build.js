@@ -2,8 +2,10 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-console.log('[Build] Installing frontend dependencies and building production bundle...');
-execSync('npm --prefix frontend install', { stdio: 'inherit' });
+console.log('[Build] Installing frontend dependencies...');
+execSync('npm --prefix frontend install --include=dev', { stdio: 'inherit' });
+
+console.log('[Build] Building production bundle with Vite...');
 execSync('npm --prefix frontend run build', { stdio: 'inherit' });
 
 const src = path.join(__dirname, 'frontend', 'dist');

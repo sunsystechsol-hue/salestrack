@@ -1,6 +1,6 @@
 {
   "buildCommand": "node build.js",
-  "outputDirectory": "frontend/dist",
+  "outputDirectory": "dist",
   "rewrites": [
     {
       "source": "/api/:path*",
